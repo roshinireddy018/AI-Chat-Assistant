@@ -22,6 +22,7 @@ const envSchema = z.object({
   MONGODB_DB: z.string().default('ai_chat_assistant'),
   OPENAI_API_KEY: z.string().optional().default(''),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  OPENAI_BASE_URL: z.string().url().optional().or(z.literal('')),
   AI_MOCK: z
     .string()
     .optional()

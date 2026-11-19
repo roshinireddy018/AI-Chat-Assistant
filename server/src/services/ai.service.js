@@ -7,7 +7,8 @@ let openaiClient = null;
 const getOpenAIClient = () => {
   if (!openaiClient) {
     openaiClient = new OpenAI({
-      apiKey: env.OPENAI_API_KEY || 'dummy_key'
+      apiKey: env.OPENAI_API_KEY,
+      baseURL: env.OPENAI_BASE_URL || undefined
     });
   }
   return openaiClient;
@@ -29,6 +30,27 @@ export const MOCK_RESPONSES = {
     '[Mock AI - Casual] Hey there! Great to chat with you. Here is a friendly and relaxed response to help you out.',
   concise:
     '[Mock AI - Concise] Direct answer provided. Maximum three sentences applied.'
+};
+
+/**
+ * Map provider error to clean, safe user message
+ * 401 -> "Invalid or missing API key"
+ * 404 -> "Model or endpoint not found"
+ * 429 -> "Quota or rate limit reached"
+ * other -> "AI service error"
+ */
+export const mapAIError = (error) => {
+  const status = error?.status || error?.statusCode || error?.response?.status;
+  if (status === 401) {
+    return 'Invalid or missing API key';
+  }
+  if (status === 404) {
+    return 'Model or endpoint not found';
+  }
+  if (status === 429) {
+    return 'Quota or rate limit reached';
+  }
+  return 'AI service error';
 };
 
 /**
@@ -70,7 +92,7 @@ export const streamAICompletion = async ({ messages, tone, onChunk, signal }) =>
   try {
     const stream = await openai.chat.completions.create(
       {
-        model: env.OPENAI_MODEL || 'gpt-4o-mini',
+        model: env.OPENAI_MODEL,
         messages: payloadMessages,
         stream: true
       },
@@ -89,12 +111,13 @@ export const streamAICompletion = async ({ messages, tone, onChunk, signal }) =>
 
     return accumulatedText;
   } catch (error) {
-    logger.error('OpenAI stream completion error:', error);
+    logger.error('OpenAI stream completion error status:', error?.status || error?.statusCode);
     throw error;
   }
 };
 
 export default {
   streamAICompletion,
+  mapAIError,
   TONE_SYSTEM_PROMPTS
 };

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Conversation } from '../models/conversation.model.js';
-import { streamAICompletion } from '../services/ai.service.js';
+import { streamAICompletion, mapAIError } from '../services/ai.service.js';
 import logger from '../utils/logger.js';
 
 const VALID_TONES = ['professional', 'casual', 'concise'];
@@ -268,13 +268,13 @@ export const postMessage = async (req, res, next) => {
         });
       }
     } catch (streamError) {
-      logger.error('Error during AI streaming:', streamError);
+      logger.error('Error during AI streaming:', streamError?.status || streamError?.message);
       // On OpenAI error send an SSE error event and save nothing
       if (!clientDisconnected) {
-        const mappedMessage = streamError.message || 'Error occurred during AI generation';
+        const mappedMessage = mapAIError(streamError);
         res.write(
           `event: error\ndata: ${JSON.stringify({
-            error: { message: mappedMessage, code: 'OPENAI_ERROR' }
+            error: { message: mappedMessage, code: 'AI_ERROR' }
           })}\n\n`
         );
         res.end();
@@ -403,12 +403,12 @@ export const regenerateResponse = async (req, res, next) => {
         });
       }
     } catch (streamError) {
-      logger.error('Error during AI streaming (regenerate):', streamError);
+      logger.error('Error during AI streaming (regenerate):', streamError?.status || streamError?.message);
       if (!clientDisconnected) {
-        const mappedMessage = streamError.message || 'Error occurred during AI generation';
+        const mappedMessage = mapAIError(streamError);
         res.write(
           `event: error\ndata: ${JSON.stringify({
-            error: { message: mappedMessage, code: 'OPENAI_ERROR' }
+            error: { message: mappedMessage, code: 'AI_ERROR' }
           })}\n\n`
         );
         res.end();
