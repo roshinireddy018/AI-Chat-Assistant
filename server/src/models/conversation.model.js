@@ -1,5 +1,33 @@
 import mongoose from 'mongoose';
 
+const messageSchema = new mongoose.Schema(
+  {
+    role: {
+      type: String,
+      enum: ['user', 'assistant'],
+      required: true
+    },
+    content: {
+      type: String,
+      required: true
+    },
+    tone: {
+      type: String,
+      enum: ['professional', 'casual', 'concise']
+    },
+    status: {
+      type: String,
+      enum: ['complete', 'aborted', 'error'],
+      default: 'complete'
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  },
+  { _id: true }
+);
+
 const conversationSchema = new mongoose.Schema(
   {
     title: {
@@ -8,11 +36,7 @@ const conversationSchema = new mongoose.Schema(
       trim: true,
       default: 'New Conversation'
     },
-    tone: {
-      type: String,
-      enum: ['Professional', 'Casual', 'Concise'],
-      default: 'Professional'
-    }
+    messages: [messageSchema]
   },
   {
     timestamps: true

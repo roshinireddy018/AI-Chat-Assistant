@@ -3,28 +3,30 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Robust path resolution to always find server/.env
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const serverEnvPath = path.resolve(__dirname, '../../.env');
 
-// Load environment variables
 dotenv.config({ path: serverEnvPath });
 
-// Schema definition for server environment configuration
 const envSchema = z.object({
   PORT: z
     .string()
     .default('5001')
     .transform((val) => {
       const parsed = parseInt(val, 10);
-      if (isNaN(parsed)) return 5001;
-      return parsed;
+      return isNaN(parsed) ? 5001 : parsed;
     }),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   MONGODB_URI: z.string().min(1, 'MONGODB_URI is required and cannot be empty'),
+  MONGODB_DB: z.string().default('ai_chat_assistant'),
   OPENAI_API_KEY: z.string().optional().default(''),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  AI_MOCK: z
+    .string()
+    .optional()
+    .transform((val) => val === 'true' || val === '1')
+    .default('false'),
   CLIENT_URL: z.string().default('http://localhost:5173')
 });
 

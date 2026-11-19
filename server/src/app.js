@@ -12,7 +12,7 @@ const app = express();
 // Security HTTP headers
 app.use(helmet());
 
-// CORS Configuration
+// CORS configuration allowing CLIENT_URL
 const allowedOrigins = [
   env.CLIENT_URL,
   'http://localhost:5173',
@@ -22,45 +22,34 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || env.NODE_ENV !== 'production') {
+      if (allowedOrigins.includes(origin) || env.NODE_ENV !== 'production') {
         return callback(null, true);
       }
       return callback(new Error('Blocked by CORS policy'));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   })
 );
 
-// Request body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// HTTP Request Logger
 if (env.NODE_ENV !== 'test') {
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
-// Root route
 app.get('/', (req, res) => {
   res.json({
-    name: 'AI Chat Assistant API',
     status: 'running',
-    healthCheck: '/api/health',
-    timestamp: new Date().toISOString()
+    healthCheck: '/api/health'
   });
 });
 
-// API Routes
 app.use('/api', routes);
-
-// 404 handler for undefined routes
 app.use(notFoundHandler);
-
-// Centralized error handling middleware
 app.use(errorHandler);
 
 export default app;

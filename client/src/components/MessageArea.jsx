@@ -43,7 +43,7 @@ export const MessageArea = ({
       <div className="max-w-[720px] mx-auto w-full">
         {messages.map((message, idx) => {
           const isLast = idx === messages.length - 1;
-          const isAi = message.sender === 'assistant';
+          const isAi = message.role === 'assistant' || message.sender === 'assistant';
 
           return (
             <MessageItem

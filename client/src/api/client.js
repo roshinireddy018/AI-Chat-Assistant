@@ -83,17 +83,16 @@ const request = async (endpoint, options = {}) => {
 /**
  * SSE Streaming helper using native ReadableStream and AbortController
  */
-export const streamChat = async ({
+export const streamConversationMessage = async ({
   conversationId,
-  message,
-  tone = 'Professional',
-  onSession,
-  onChunk,
+  content,
+  tone = 'professional',
+  onDelta,
   onDone,
   onError,
   signal
 }) => {
-  const url = buildUrl('/chat/stream');
+  const url = buildUrl(`/conversations/${conversationId}/messages`);
 
   let response;
   try {
@@ -102,7 +101,7 @@ export const streamChat = async ({
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ conversationId, message, tone }),
+      body: JSON.stringify({ content, tone: tone.toLowerCase() }),
       signal
     });
   } catch (err) {
@@ -143,8 +142,6 @@ export const streamChat = async ({
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-
-      // Split SSE message blocks by double newline
       const parts = buffer.split('\n\n');
       buffer = parts.pop() || '';
 
@@ -172,23 +169,19 @@ export const streamChat = async ({
           parsedData = dataStr;
         }
 
-        if (eventType === 'session') {
-          if (onSession) onSession(parsedData);
+        if (eventType === 'delta') {
+          if (onDelta && parsedData?.text !== undefined) onDelta(parsedData.text);
         } else if (eventType === 'done') {
           if (onDone) onDone(parsedData);
         } else if (eventType === 'error') {
-          if (onError) onError(parsedData);
-        } else if (eventType === 'message' || !eventType) {
-          if (parsedData?.text !== undefined) {
-            if (onChunk) onChunk(parsedData.text);
-          }
+          if (onError) onError(parsedData?.error || parsedData);
+        } else if (eventType === 'message') {
+          if (onDelta && parsedData?.text !== undefined) onDelta(parsedData.text);
         }
       }
     }
   } catch (readErr) {
-    if (signal?.aborted) {
-      return;
-    }
+    if (signal?.aborted) return;
     const error = { message: readErr.message || 'Stream interrupted', code: 'STREAM_INTERRUPTED' };
     if (onError) onError(error);
     throw error;
@@ -201,7 +194,7 @@ export const apiClient = {
   patch: (endpoint, body, options = {}) => request(endpoint, { ...options, method: 'PATCH', body }),
   delete: (endpoint, options = {}) => request(endpoint, { ...options, method: 'DELETE' }),
   request,
-  streamChat
+  streamConversationMessage
 };
 
 export default apiClient;

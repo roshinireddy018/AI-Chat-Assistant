@@ -7,62 +7,94 @@ let openaiClient = null;
 const getOpenAIClient = () => {
   if (!openaiClient) {
     openaiClient = new OpenAI({
-      apiKey: env.OPENAI_API_KEY || 'not_configured'
+      apiKey: env.OPENAI_API_KEY || 'dummy_key'
     });
   }
   return openaiClient;
 };
 
-const TONE_SYSTEM_PROMPTS = {
-  Professional:
-    'You are an AI assistant. Provide thoughtful, well-structured, and clear answers. Use precise language, objective explanations, and clean formatting with markdown.',
-  Casual:
-    'You are a friendly and conversational AI assistant. Respond in a warm, natural, and accessible tone while keeping answers helpful, accurate, and engaging.',
-  Concise:
-    'You are a direct and concise AI assistant. Deliver answers with maximum clarity and brevity. Avoid unnecessary filler or conversational preamble. Use bullet points where appropriate.'
+export const TONE_SYSTEM_PROMPTS = {
+  professional:
+    'You are a professional assistant. Provide clear, well-structured, and objective responses.',
+  casual:
+    'You are a friendly and conversational assistant. Respond in a warm, relaxed, approachable tone.',
+  concise:
+    'You are a concise assistant. Provide direct and brief responses. You must use a maximum of 3 sentences.'
+};
+
+export const MOCK_RESPONSES = {
+  professional:
+    '[Mock AI - Professional] Thank you for your inquiry. This is a verified professional response demonstrating structured analysis and clear delivery.',
+  casual:
+    '[Mock AI - Casual] Hey there! Great to chat with you. Here is a friendly and relaxed response to help you out.',
+  concise:
+    '[Mock AI - Concise] Direct answer provided. Maximum three sentences applied.'
 };
 
 /**
- * Stream chat completion from OpenAI
+ * Stream completion via OpenAI or Mock
  */
-export const streamChatCompletion = async ({ messages, tone = 'Professional', onChunk, signal }) => {
-  const openai = getOpenAIClient();
-  const systemPrompt = TONE_SYSTEM_PROMPTS[tone] || TONE_SYSTEM_PROMPTS.Professional;
+export const streamAICompletion = async ({ messages, tone, onChunk, signal }) => {
+  // If AI_MOCK is true, simulate streaming response
+  if (env.AI_MOCK) {
+    const mockText = MOCK_RESPONSES[tone] || MOCK_RESPONSES.professional;
+    const words = mockText.split(' ');
+    let fullText = '';
 
-  const formattedMessages = [
-    { role: 'system', content: systemPrompt },
-    ...messages.map((m) => ({
-      role: m.sender === 'user' ? 'user' : 'assistant',
-      content: m.content
-    }))
+    for (let i = 0; i < words.length; i++) {
+      if (signal?.aborted) break;
+      const word = (i === 0 ? '' : ' ') + words[i];
+      fullText += word;
+      if (onChunk) onChunk(word);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+
+    return fullText;
+  }
+
+  // Real OpenAI Streaming
+  const openai = getOpenAIClient();
+  const systemInstruction = TONE_SYSTEM_PROMPTS[tone];
+
+  // System message + last 20 messages
+  const recentMessages = messages.slice(-20).map((m) => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }));
+
+  const payloadMessages = [
+    { role: 'system', content: systemInstruction },
+    ...recentMessages
   ];
 
   try {
     const stream = await openai.chat.completions.create(
       {
         model: env.OPENAI_MODEL || 'gpt-4o-mini',
-        messages: formattedMessages,
+        messages: payloadMessages,
         stream: true
       },
       { signal }
     );
 
-    let fullText = '';
+    let accumulatedText = '';
     for await (const chunk of stream) {
+      if (signal?.aborted) break;
       const delta = chunk.choices[0]?.delta?.content || '';
       if (delta) {
-        fullText += delta;
+        accumulatedText += delta;
         if (onChunk) onChunk(delta);
       }
     }
 
-    return fullText;
+    return accumulatedText;
   } catch (error) {
-    logger.error('Error during OpenAI streaming:', error);
+    logger.error('OpenAI stream completion error:', error);
     throw error;
   }
 };
 
 export default {
-  streamChatCompletion
+  streamAICompletion,
+  TONE_SYSTEM_PROMPTS
 };

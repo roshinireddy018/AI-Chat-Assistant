@@ -7,10 +7,11 @@ import useHealthCheck from '../hooks/useHealthCheck.js';
 import {
   getConversations,
   getConversation,
+  createConversation,
   renameConversation,
   deleteConversation
 } from '../api/conversations.api.js';
-import { streamChat } from '../api/client.js';
+import { streamConversationMessage, API_BASE_URL } from '../api/client.js';
 
 export const ChatPage = () => {
   // Theme state: defaults to prefers-color-scheme or saved preference
@@ -94,9 +95,6 @@ export const ChatPage = () => {
       setActiveConversationId(data._id);
       setActiveTitle(data.title || 'Conversation');
       setMessages(data.messages || []);
-      if (data.tone && ['Professional', 'Casual', 'Concise'].includes(data.tone)) {
-        handleToneChange(data.tone);
-      }
     } catch (err) {
       console.error('Failed to load conversation:', err);
     }
@@ -153,9 +151,9 @@ export const ChatPage = () => {
       setMessages((prev) => [
         ...prev,
         {
-          sender: 'assistant',
+          role: 'assistant',
           content: streamingContent,
-          tone: selectedTone,
+          tone: selectedTone.toLowerCase(),
           createdAt: new Date().toISOString()
         }
       ]);
@@ -168,10 +166,24 @@ export const ChatPage = () => {
   const handleSendMessage = async (text, tone) => {
     if (!text.trim() || isStreaming) return;
 
+    let convId = activeConversationId;
+    if (!convId) {
+      try {
+        const newConv = await createConversation(text.trim().slice(0, 40));
+        convId = newConv._id;
+        setActiveConversationId(newConv._id);
+        setActiveTitle(newConv.title);
+        loadConversations(searchQuery);
+      } catch (err) {
+        console.error('Failed to create conversation:', err);
+        return;
+      }
+    }
+
     const userMessage = {
-      sender: 'user',
+      role: 'user',
       content: text,
-      tone,
+      tone: tone.toLowerCase(),
       createdAt: new Date().toISOString()
     };
 
@@ -183,25 +195,14 @@ export const ChatPage = () => {
     abortControllerRef.current = controller;
 
     let accumulatedText = '';
-    let currentConvId = activeConversationId;
 
     try {
-      await streamChat({
-        conversationId: currentConvId,
-        message: text,
-        tone,
+      await streamConversationMessage({
+        conversationId: convId,
+        content: text,
+        tone: tone.toLowerCase(),
         signal: controller.signal,
-        onSession: (session) => {
-          if (session?.conversationId && session.conversationId !== currentConvId) {
-            currentConvId = session.conversationId;
-            setActiveConversationId(session.conversationId);
-            if (session.title) {
-              setActiveTitle(session.title);
-            }
-            loadConversations(searchQuery);
-          }
-        },
-        onChunk: (delta) => {
+        onDelta: (delta) => {
           accumulatedText += delta;
           setStreamingContent(accumulatedText);
         },
@@ -209,11 +210,10 @@ export const ChatPage = () => {
           setMessages((prev) => [
             ...prev,
             {
-              _id: data?.messageId,
-              sender: 'assistant',
+              role: 'assistant',
               content: accumulatedText,
-              tone,
-              createdAt: data?.timestamp || new Date().toISOString()
+              tone: data?.tone || tone.toLowerCase(),
+              createdAt: new Date().toISOString()
             }
           ]);
           setStreamingContent('');
@@ -226,10 +226,10 @@ export const ChatPage = () => {
           setMessages((prev) => [
             ...prev,
             {
-              sender: 'assistant',
+              role: 'assistant',
               content: accumulatedText,
               error: err?.message || 'Error generating response',
-              tone,
+              tone: tone.toLowerCase(),
               createdAt: new Date().toISOString()
             }
           ]);
@@ -240,14 +240,13 @@ export const ChatPage = () => {
       });
     } catch (err) {
       if (!controller.signal.aborted) {
-        console.error('Send error:', err);
         setMessages((prev) => [
           ...prev,
           {
-            sender: 'assistant',
+            role: 'assistant',
             content: accumulatedText,
             error: err?.message || 'Failed to complete request',
-            tone,
+            tone: tone.toLowerCase(),
             createdAt: new Date().toISOString()
           }
         ]);
@@ -262,10 +261,9 @@ export const ChatPage = () => {
   const handleRegenerate = () => {
     if (isStreaming || messages.length === 0) return;
 
-    // Find the last user message
     let lastUserIndex = -1;
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].sender === 'user') {
+      if (messages[i].role === 'user' || messages[i].sender === 'user') {
         lastUserIndex = i;
         break;
       }
@@ -274,35 +272,29 @@ export const ChatPage = () => {
     if (lastUserIndex === -1) return;
 
     const userPrompt = messages[lastUserIndex].content;
-    // Remove the following assistant message(s)
     setMessages((prev) => prev.slice(0, lastUserIndex + 1));
     handleSendMessage(userPrompt, selectedTone);
   };
 
   // Export current chat as Markdown
-  const handleExportMarkdown = () => {
-    if (!messages.length) return;
-
-    let md = `# ${activeTitle}\n\n`;
-    md += `*Exported on ${new Date().toLocaleString()}*\n\n---\n\n`;
-
-    messages.forEach((m) => {
-      if (m.sender === 'user') {
-        md += `### User\n\n${m.content}\n\n`;
-      } else {
-        md += `### Assistant (${m.tone || 'Standard'})\n\n${m.content}\n\n`;
+  const handleExportMarkdown = async () => {
+    if (!activeConversationId) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/conversations/${activeConversationId}/export`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${activeTitle.replace(/[^a-z0-9_-]/gi, '_')}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       }
-    });
-
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeTitle.replace(/[^a-z0-9_-]/gi, '_')}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to export markdown:', e);
+    }
   };
 
   return (

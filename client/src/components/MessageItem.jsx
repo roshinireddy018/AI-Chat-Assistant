@@ -10,7 +10,7 @@ export const MessageItem = ({
   onRetry
 }) => {
   const [copied, setCopied] = useState(false);
-  const isUser = message.sender === 'user';
+  const isUser = message.role === 'user' || message.sender === 'user';
 
   const handleCopyText = async () => {
     try {

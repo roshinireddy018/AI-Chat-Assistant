@@ -4,24 +4,24 @@ import {
   createConversation,
   getConversation,
   renameConversation,
-  deleteConversation
+  deleteConversation,
+  postMessage,
+  regenerateResponse,
+  exportConversationMarkdown
 } from '../controllers/conversation.controller.js';
 
 const router = Router();
 
-// GET /api/conversations?q=
+// Conversation CRUD
 router.get('/', listConversations);
-
-// POST /api/conversations
 router.post('/', createConversation);
-
-// GET /api/conversations/:id
 router.get('/:id', getConversation);
-
-// PATCH /api/conversations/:id
 router.patch('/:id', renameConversation);
-
-// DELETE /api/conversations/:id
 router.delete('/:id', deleteConversation);
+
+// Messages & AI Stream
+router.post('/:id/messages', postMessage);
+router.post('/:id/regenerate', regenerateResponse);
+router.get('/:id/export', exportConversationMarkdown);
 
 export default router;
