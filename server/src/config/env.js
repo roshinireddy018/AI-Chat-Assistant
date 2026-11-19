@@ -31,7 +31,7 @@ const envSchema = z.object({
 const validateEnv = () => {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
-    console.error('❌ Environment validation failed. Please check server/.env:');
+    console.error('Environment validation failed. Please check server/.env:');
     console.error(JSON.stringify(result.error.format(), null, 2));
     process.exit(1);
   }

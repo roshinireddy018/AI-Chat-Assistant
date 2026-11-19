@@ -1,8 +1,7 @@
-/**
- * Data Models Registry
- * Will contain Mongoose schemas and models (Chat, Message, etc.) in subsequent phases.
- */
+export { Conversation } from './conversation.model.js';
+export { Message } from './message.model.js';
 
-export const models = {};
-
-export default models;
+export default {
+  Conversation: './conversation.model.js',
+  Message: './message.model.js'
+};

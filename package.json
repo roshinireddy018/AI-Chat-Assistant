@@ -1,7 +1,7 @@
 {
   "name": "ai-chat-assistant-monorepo",
   "version": "1.0.0",
-  "description": "Full-stack AI Chat Assistant foundation",
+  "description": "Full-stack AI Chat Assistant",
   "private": true,
   "scripts": {
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue.bold,magenta.bold\" \"npm run dev:server\" \"npm run dev:client\"",

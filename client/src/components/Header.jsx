@@ -1,93 +1,99 @@
-import React from 'react';
-import { Menu, Bot, Activity, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
-import ToneSelector from './ToneSelector.jsx';
+import React, { useState } from 'react';
+import { Menu, Download, Check, X, Pencil } from 'lucide-react';
 
 export const Header = ({
+  title = 'New conversation',
+  conversationId,
   onToggleSidebar,
-  selectedTone,
-  onSelectTone,
-  healthData,
-  isHealthy,
-  isLoadingHealth,
-  onRefreshHealth
+  onRename,
+  onExportMarkdown
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentTitle, setCurrentTitle] = useState(title);
+
+  const handleStartEdit = () => {
+    setCurrentTitle(title);
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    if (currentTitle.trim() && currentTitle !== title) {
+      onRename(currentTitle.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setCurrentTitle(title);
+    setIsEditing(false);
+  };
+
   return (
-    <header className="h-16 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
-      {/* Left: Mobile Toggle & Brand */}
-      <div className="flex items-center gap-3">
+    <header className="h-14 border-b border-[var(--border)] bg-[var(--bg)] px-4 flex items-center justify-between sticky top-0 z-20">
+      {/* Left: Mobile Toggle & Conversation Title */}
+      <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onToggleSidebar}
-          className="p-2 -ml-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 md:hidden focus:outline-none"
+          className="p-1.5 text-[var(--muted)] hover:text-[var(--text)] rounded md:hidden"
           aria-label="Toggle navigation"
         >
-          <Menu className="w-5 h-5" />
+          <Menu size={18} strokeWidth={1.5} />
         </button>
 
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
-            <Bot className="w-4 h-4 text-white" />
+        {isEditing ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={currentTitle}
+              onChange={(e) => setCurrentTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+                if (e.key === 'Escape') handleCancel();
+              }}
+              autoFocus
+              className="bg-[var(--surface)] text-[var(--text)] text-sm px-2 py-0.5 rounded border border-[var(--accent)] focus:outline-none"
+            />
+            <button
+              onClick={handleSave}
+              className="p-1 text-[var(--accent)] hover:opacity-80"
+              title="Save"
+            >
+              <Check size={16} strokeWidth={1.75} />
+            </button>
+            <button
+              onClick={handleCancel}
+              className="p-1 text-[var(--muted)] hover:text-[var(--text)]"
+              title="Cancel"
+            >
+              <X size={16} strokeWidth={1.75} />
+            </button>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-semibold text-sm sm:text-base text-white tracking-tight">
-                AI Chat Assistant
-              </h1>
-              <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded">
-                Foundation
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">
-              Full-Stack Architecture &bull; Node &bull; Express &bull; MongoDB Atlas &bull; OpenAI SDK
-            </p>
-          </div>
-        </div>
+        ) : (
+          <button
+            onClick={handleStartEdit}
+            className="group flex items-center gap-1.5 text-sm font-medium text-[var(--text)] hover:text-[var(--accent)] transition-colors duration-150 truncate text-left max-w-[280px] sm:max-w-md"
+            title="Click to rename"
+          >
+            <span className="truncate">{title}</span>
+            <Pencil
+              size={13}
+              strokeWidth={1.5}
+              className="opacity-0 group-hover:opacity-100 text-[var(--muted)] flex-shrink-0 transition-opacity duration-150"
+            />
+          </button>
+        )}
       </div>
 
-      {/* Right: Health Status & Tone Selector */}
-      <div className="flex items-center gap-3">
-        {/* Backend / Database Connection Status Badge */}
-        <div
-          onClick={onRefreshHealth}
-          title={
-            isLoadingHealth
-              ? 'Checking status...'
-              : isHealthy
-              ? 'Connected to MongoDB Atlas'
-              : 'Backend or MongoDB Atlas not reachable. Click to retry.'
-          }
-          className={`cursor-pointer group flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-            isLoadingHealth
-              ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
-              : isHealthy
-              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/15'
-              : 'bg-rose-500/10 text-rose-300 border-rose-500/20 hover:bg-rose-500/15'
-          }`}
+      {/* Right: Export Icon Button */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onExportMarkdown}
+          className="p-2 text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface)] rounded-control border border-transparent hover:border-[var(--border)] transition-colors duration-150"
+          title="Export chat as Markdown"
+          aria-label="Export chat as Markdown"
         >
-          {isLoadingHealth ? (
-            <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
-          ) : isHealthy ? (
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-          ) : (
-            <AlertCircle className="w-3 h-3 text-rose-400" />
-          )}
-
-          <span className="hidden md:inline">
-            {isLoadingHealth
-              ? 'Connecting...'
-              : isHealthy
-              ? 'DB & API Connected'
-              : 'Offline'}
-          </span>
-          <span className="md:hidden">
-            {isHealthy ? 'Online' : 'Offline'}
-          </span>
-        </div>
-
-        {/* Tone Selector */}
-        <ToneSelector selectedTone={selectedTone} onSelectTone={onSelectTone} />
+          <Download size={17} strokeWidth={1.5} />
+        </button>
       </div>
     </header>
   );

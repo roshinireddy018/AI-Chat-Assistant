@@ -60,8 +60,8 @@ const startServer = async () => {
 
     // 2. Start Express HTTP Server only after DB is connected
     server = app.listen(env.PORT, () => {
-      logger.info(`🚀 Server running on port ${env.PORT} in ${env.NODE_ENV} mode`);
-      logger.info(`👉 Health check available at: http://localhost:${env.PORT}/api/health`);
+      logger.info(`Server running on port ${env.PORT} in ${env.NODE_ENV} mode`);
+      logger.info(`Health check available at: http://localhost:${env.PORT}/api/health`);
     });
 
     // Handle unexpected server errors
@@ -77,7 +77,7 @@ const startServer = async () => {
   } catch (error) {
     // Refuse to start with a clear error if MongoDB connection fails.
     console.error('\n' + '='.repeat(60));
-    console.error('❌ FATAL: BACKEND STARTUP ABORTED!');
+    console.error('FATAL: BACKEND STARTUP ABORTED!');
     console.error('Reason: Failed to connect to MongoDB.');
     console.error('The backend will NOT start without an active database connection.');
     console.error(`Attempted URI: ${env.MONGODB_URI.replace(/\/\/.*@/, '//<credentials>@')}`);

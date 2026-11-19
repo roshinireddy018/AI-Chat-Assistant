@@ -1,27 +1,26 @@
-# Full-Stack AI Chat Assistant (Foundation)
+# Full-Stack AI Chat Assistant
 
-> **90-Minute Vibe Coding Assessment Foundation**  
-> A full-stack architecture foundation for an AI Chat Assistant built with React, Vite, Tailwind CSS v3, Node.js, Express, MongoDB Atlas, Mongoose, Zod, and the OpenAI SDK.
+Full-stack architecture for an AI Chat Assistant built with React, Vite, Tailwind CSS v3, Node.js, Express, MongoDB Atlas, Mongoose, Zod, and the OpenAI SDK.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
 | **Frontend** | React 18 + Vite | Reactive user interface |
-| **Styling** | Tailwind CSS v3 | Modern dark AI-product theme |
-| **Icons** | Lucide React | Iconography |
-| **HTTP Client** | Native Fetch API | Centralized API client (`client/src/api/client.js`) |
+| **Styling** | Tailwind CSS v3 | Editorial warm theme |
+| **Icons** | Lucide React | Line icons |
+| **HTTP Client** | Native Fetch API | Centralized API client (client/src/api/client.js) with streaming helper |
 | **Backend** | Node.js + Express | RESTful API server with modular layered architecture |
 | **Database** | MongoDB Atlas + Mongoose | Cloud document database with Mongoose ODM |
 | **Validation** | Zod | Runtime schema validation for env variables & requests |
-| **AI Integration**| OpenAI SDK (`openai`) | OpenAI SDK configured with model default `gpt-4o-mini` |
+| **AI Integration**| OpenAI SDK (openai) | OpenAI SDK configured with model default gpt-4o-mini |
 | **Security** | Helmet + CORS | HTTP security headers and configurable CORS origins |
 
 ---
 
-## 📁 Project Architecture & Directory Structure
+## Project Architecture & Directory Structure
 
 ```text
 quantiphi/
@@ -38,14 +37,21 @@ quantiphi/
 │       │   ├── env.js         # Zod runtime validation of environment variables
 │       │   └── db.js          # Mongoose connection targeting ai_chat_assistant
 │       ├── models/
+│       │   ├── conversation.model.js # Conversation schema (title, tone)
+│       │   ├── message.model.js      # Message schema (conversationId, sender, content, tone)
 │       │   └── index.js       # Model registry
 │       ├── routes/
-│       │   ├── health.routes.js # Route for GET /api/health
+│       │   ├── health.routes.js       # Route for GET /api/health
+│       │   ├── conversation.routes.js # Routes for conversation CRUD
+│       │   ├── chat.routes.js         # Route for POST /api/chat/stream
 │       │   └── index.js       # Central router aggregation
 │       ├── controllers/
-│       │   └── health.controller.js # Trimmed health check (status, uptime, timestamp, database)
+│       │   ├── health.controller.js       # Trimmed health check (status, uptime, timestamp, database)
+│       │   ├── conversation.controller.js # Conversation handlers (list, create, get, rename, delete)
+│       │   └── chat.controller.js         # SSE streaming chat handler
 │       ├── services/
-│       │   └── index.js       # Domain services registry (ready for OpenAI service)
+│       │   ├── ai.service.js  # OpenAI completion streaming service
+│       │   └── index.js       # Domain services registry
 │       ├── middleware/
 │       │   ├── errorHandler.js   # Centralized error handler returning { error: { message, code } }
 │       │   ├── notFoundHandler.js# 404 handler returning { error: { message, code: 'NOT_FOUND' } }
@@ -61,43 +67,44 @@ quantiphi/
     ├── vite.config.js         # Vite configuration with React plugin
     ├── tailwind.config.js     # Tailwind CSS theme extension
     ├── postcss.config.js      # PostCSS configuration
-    ├── index.html             # HTML entry point with dark mode default
+    ├── index.html             # HTML entry point with Google Fonts (Source Serif 4)
     ├── .env                   # Frontend environment variables (git-ignored)
     ├── .env.example           # Frontend environment template
     └── src/
         ├── api/
-        │   ├── client.js      # Centralized Fetch API client with streaming helper placeholder
+        │   ├── client.js      # Centralized Fetch API client with SSE ReadableStream helper
+        │   ├── conversations.api.js # Conversation API methods
         │   └── health.api.js  # API call for GET /api/health
         ├── components/
-        │   ├── Header.jsx     # App bar with live DB status badge & tone selector
-        │   ├── Sidebar.jsx    # Collapsible sidebar with New Chat & system status
-        │   ├── WelcomeScreen.jsx # Genuine empty state with prompt starter chips
-        │   ├── MessageArea.jsx# Chat viewport rendering WelcomeScreen or messages
-        │   ├── ChatInput.jsx  # Multi-line input, tone indicator, send action
-        │   └── ToneSelector.jsx# Interactive tone picker (Professional, Casual, etc.)
+        │   ├── Header.jsx     # Minimal header with editable title and markdown export
+        │   ├── Sidebar.jsx    # Editorial sidebar with search, grouped list, inline rename, delete
+        │   ├── WelcomeScreen.jsx # Centered serif greeting
+        │   ├── MessageArea.jsx# Chat viewport with auto-scroll detection
+        │   ├── MessageItem.jsx# Individual bubble with copy, regenerate, tone label
+        │   ├── CodeBlock.jsx  # Monospace code block with copy button
+        │   └── ChatInput.jsx  # Composer card with segmented tone toggle and circular send/stop button
         ├── hooks/
         │   └── useHealthCheck.js # Polling hook for server & DB connectivity
         ├── pages/
-        │   └── ChatPage.jsx   # Master page orchestrating sidebar, header, and chat
+        │   └── ChatPage.jsx   # Master page orchestrating sidebar, header, and chat state
         ├── App.jsx            # Application root
         ├── main.jsx           # React DOM mounting point
-        └── index.css          # Tailwind directives & dark scrollbars
+        └── index.css          # CSS variables for light/dark editorial warm themes
 ```
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **MongoDB**: Active MongoDB Atlas cluster URI
+- Node.js: v18.0.0 or higher
+- MongoDB: Active MongoDB Atlas cluster URI
 
 ### 2. Install Dependencies
 Install all root, server, and client dependencies:
 ```bash
 npm run install:all
 ```
-*(Or run `npm install` in root, `server/`, and `client/`)*
 
 ### 3. Configure Environment Variables
 
@@ -120,7 +127,7 @@ VITE_APP_NAME=AI Chat Assistant
 
 ---
 
-## 🚀 Running the Application
+## Running the Application
 
 ### Option A: Run Both Concurrently
 From the root directory:
@@ -146,10 +153,10 @@ npm run build:client   # Compiles production assets into client/dist/
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 ### Health Check: `GET /api/health`
-Returns the trimmed status of the server and MongoDB Atlas connection.
+Returns the status of the server and MongoDB Atlas connection.
 
 **Sample Response (`200 OK`)**:
 ```json
@@ -171,8 +178,22 @@ Returns the trimmed status of the server and MongoDB Atlas connection.
 }
 ```
 
+### Conversations: `GET /api/conversations?q=`
+Returns list of conversations matching optional query, sorted by `updatedAt` descending.
+
+### Chat Streaming: `POST /api/chat/stream`
+Streams completions via Server-Sent Events (SSE).
+Request Body:
+```json
+{
+  "conversationId": "optional_existing_id",
+  "message": "User query",
+  "tone": "Professional"
+}
+```
+
 ### Standard Error Response Format
-All errors (including 404, Zod validation, and unhandled server errors) consistently return:
+All errors consistently return:
 ```json
 {
   "error": {
@@ -181,26 +202,3 @@ All errors (including 404, Zod validation, and unhandled server errors) consiste
   }
 }
 ```
-
----
-
-## 🎓 Viva & Technical Architecture Highlights
-
-1. **Database Refusal Policy**:
-   - In `server/src/server.js`, `connectDB()` is awaited before `app.listen()` is invoked.
-   - If MongoDB fails to connect, the process logs `❌ FATAL: BACKEND STARTUP ABORTED!` and exits with code 1.
-   - In `server/src/config/db.js`, `dbName: 'ai_chat_assistant'` is explicitly set with no local fallback.
-
-2. **Zod Environment Validation**:
-   - `server/src/config/env.js` validates environment variables (`PORT`, `NODE_ENV`, `MONGODB_URI`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `CLIENT_URL`) at process startup.
-
-3. **Centralized Error Handling**:
-   - `server/src/middleware/errorHandler.js` returns `{ error: { message, code } }` across Zod validation (`VALIDATION_ERROR`), Mongoose errors, and unhandled exceptions.
-   - Graceful shutdown handlers (`SIGINT`, `SIGTERM`) and `unhandledRejection` / `uncaughtException` listeners are registered in `server.js`.
-
-4. **Centralized Frontend API Client**:
-   - `client/src/api/client.js` encapsulates the native Fetch API with base URL resolution, JSON parsing, error transformation into `{ message, code }`, and a `streamRequest` helper for future streaming.
-
-5. **Genuine Empty State & Interactive Prompt Chips**:
-   - No mock conversations or hardcoded chat history.
-   - Clicking a welcome screen prompt chip populates the chat input without auto-submitting.

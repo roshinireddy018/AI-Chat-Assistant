@@ -1,16 +1,19 @@
 import React, { useRef, useEffect } from 'react';
-import { Send, Sparkles, CornerDownLeft, Info } from 'lucide-react';
-import { TONES } from './ToneSelector.jsx';
+import { ArrowUp, Square } from 'lucide-react';
+
+const TONES = ['Professional', 'Casual', 'Concise'];
 
 export const ChatInput = ({
   inputText = '',
   setInputText,
   onSendMessage,
-  selectedTone,
-  isLoading = false
+  onStopStreaming,
+  selectedTone = 'Professional',
+  onSelectTone,
+  isStreaming = false,
+  disabled = false
 }) => {
   const textareaRef = useRef(null);
-  const currentTone = TONES.find((t) => t.id === selectedTone) || TONES[0];
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -21,8 +24,12 @@ export const ChatInput = ({
 
   const handleSubmit = (e) => {
     e?.preventDefault();
+    if (isStreaming) {
+      onStopStreaming();
+      return;
+    }
     const trimmed = inputText.trim();
-    if (!trimmed || isLoading) return;
+    if (!trimmed || disabled) return;
 
     onSendMessage(trimmed, selectedTone);
     if (setInputText) setInputText('');
@@ -40,61 +47,79 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="border-t border-slate-800/80 bg-slate-900/60 backdrop-blur-md p-4 sticky bottom-0 z-20">
-      <div className="max-w-4xl mx-auto space-y-2">
-        <form
-          onSubmit={handleSubmit}
-          className="relative rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-lg shadow-black/40 focus-within:border-indigo-500/80 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all"
-        >
-          {/* Active Tone Indicator Pill */}
-          <div className="pt-2 px-3 flex items-center justify-between text-[11px] text-slate-400">
-            <span className="flex items-center gap-1.5 font-medium text-slate-300">
-              <Sparkles className="w-3 h-3 text-indigo-400" />
-              Responding in <strong className="text-indigo-300">{currentTone.label}</strong> tone
-            </span>
-            <span className="hidden sm:inline text-slate-500 text-[10px]">
-              Shift + Enter for new line
-            </span>
-          </div>
-
-          {/* Text Area */}
+    <div className="p-4 bg-[var(--bg)] sticky bottom-0 z-10">
+      <div className="max-w-[768px] mx-auto w-full">
+        {/* Large Rounded Composer Card */}
+        <div className="relative rounded-composer bg-[var(--surface)] border border-[var(--border)] shadow-sm focus-within:border-[var(--accent)] transition-colors duration-150 p-3">
+          {/* Auto-growing Textarea */}
           <textarea
             ref={textareaRef}
             rows={1}
             value={inputText}
             onChange={(e) => setInputText && setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything or request assistance..."
-            disabled={isLoading}
-            className="w-full bg-transparent text-slate-100 placeholder-slate-500 px-4 pt-2.5 pb-12 text-sm focus:outline-none resize-none max-h-48 overflow-y-auto"
+            placeholder="Message the assistant..."
+            disabled={disabled}
+            className="w-full bg-transparent text-[var(--text)] placeholder-[var(--muted)] text-[15px] leading-relaxed resize-none focus:outline-none max-h-48 overflow-y-auto px-1 py-0.5"
           />
 
-          {/* Bottom Action Bar inside input */}
-          <div className="absolute right-2.5 bottom-2.5 flex items-center gap-2">
-            <button
-              type="submit"
-              disabled={!inputText.trim() || isLoading}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                inputText.trim() && !isLoading
-                  ? 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
-              }`}
-              aria-label="Send message"
-            >
-              <span>Send</span>
-              <Send className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </form>
+          {/* Bottom Controls Row */}
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]/50 mt-1">
+            {/* Tone Selector: Compact Segmented Control */}
+            <div className="inline-flex items-center gap-0.5 p-0.5 rounded-control bg-[var(--surface-2)] border border-[var(--border)]/60 text-xs">
+              {TONES.map((tone) => {
+                const isActive = tone === selectedTone;
+                return (
+                  <button
+                    key={tone}
+                    type="button"
+                    onClick={() => onSelectTone(tone)}
+                    className={`px-2.5 py-1 rounded-[8px] text-xs font-normal transition-colors duration-150 ${
+                      isActive
+                        ? 'bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] shadow-xs font-medium'
+                        : 'text-[var(--muted)] hover:text-[var(--text)]'
+                    }`}
+                  >
+                    {tone}
+                  </button>
+                );
+              })}
+            </div>
 
-        {/* Phase notification footer */}
-        <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-          <div className="flex items-center gap-1.5">
-            <Info className="w-3 h-3 text-indigo-400" />
-            <span>Phase 1 Foundation: Input validated &bull; Express API connected</span>
+            {/* Circular Send / Square Stop Button */}
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={onStopStreaming}
+                className="w-8 h-8 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white flex items-center justify-center transition-colors duration-150 shadow-xs"
+                title="Stop generating"
+                aria-label="Stop generating"
+              >
+                <Square size={13} strokeWidth={2} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!inputText.trim() || disabled}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-150 ${
+                  inputText.trim() && !disabled
+                    ? 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-xs cursor-pointer'
+                    : 'bg-[var(--surface-2)] text-[var(--muted)] border border-[var(--border)] cursor-not-allowed'
+                }`}
+                title="Send message"
+                aria-label="Send message"
+              >
+                <ArrowUp size={16} strokeWidth={2} />
+              </button>
+            )}
           </div>
-          <span className="text-[10px] hidden sm:inline">OpenAI SDK Ready</span>
         </div>
+
+        {/* Muted Hint Under Card */}
+        <p className="text-[11px] text-[var(--muted)] text-center mt-2 font-normal select-none">
+          Shift + Enter for a new line
+        </p>
       </div>
     </div>
   );
