@@ -4,11 +4,47 @@ import logger from '../utils/logger.js';
 
 let openaiClient = null;
 
+const getEffectiveBaseURL = () => {
+  if (env.OPENAI_BASE_URL) return env.OPENAI_BASE_URL;
+  const key = env.OPENAI_API_KEY || '';
+  const model = env.OPENAI_MODEL || '';
+  if (key.startsWith('AIza') || key.startsWith('AQ.') || model.toLowerCase().includes('gemini')) {
+    return 'https://generativelanguage.googleapis.com/v1beta/openai/';
+  }
+  return undefined;
+};
+
+const getEffectiveModel = () => {
+  let model = (env.OPENAI_MODEL || 'gpt-4o-mini').trim();
+  const baseURL = getEffectiveBaseURL();
+  const isGemini =
+    baseURL?.includes('generativelanguage.googleapis.com') ||
+    model.toLowerCase().includes('gemini') ||
+    (env.OPENAI_API_KEY && (env.OPENAI_API_KEY.startsWith('AIza') || env.OPENAI_API_KEY.startsWith('AQ.')));
+
+  if (isGemini) {
+    model = model.replace(/^models\//i, '').replace(/\s+/g, '-').toLowerCase();
+    // Default to active, high-quota, responsive Gemini model
+    if (
+      !model.startsWith('gemini-') ||
+      model === 'gemini-1.5-flash' ||
+      model === 'gemini-2.0-flash' ||
+      model === 'gemini-2.5-flash' ||
+      model === 'gemini-2.5-pro' ||
+      model === 'gemini-3.8-flash'
+    ) {
+      model = 'gemini-3.1-flash-lite';
+    }
+  }
+  return model;
+};
+
 const getOpenAIClient = () => {
   if (!openaiClient) {
     openaiClient = new OpenAI({
       apiKey: env.OPENAI_API_KEY,
-      baseURL: env.OPENAI_BASE_URL || undefined
+      baseURL: getEffectiveBaseURL(),
+      maxRetries: 1
     });
   }
   return openaiClient;
@@ -90,14 +126,35 @@ export const streamAICompletion = async ({ messages, tone, onChunk, signal }) =>
   ];
 
   try {
-    const stream = await openai.chat.completions.create(
-      {
-        model: env.OPENAI_MODEL,
-        messages: payloadMessages,
-        stream: true
-      },
-      { signal }
-    );
+    let targetModel = getEffectiveModel();
+    let stream;
+    try {
+      stream = await openai.chat.completions.create(
+        {
+          model: targetModel,
+          messages: payloadMessages,
+          stream: true
+        },
+        { signal }
+      );
+    } catch (createErr) {
+      // If 503 (high demand) or 404 (model retired) on Gemini, fallback to gemini-3.1-flash-lite
+      const status = createErr?.status || createErr?.statusCode;
+      if ((status === 503 || status === 404) && targetModel !== 'gemini-3.1-flash-lite') {
+        logger.warn(`Model ${targetModel} returned status ${status}. Retrying with gemini-3.1-flash-lite...`);
+        targetModel = 'gemini-3.1-flash-lite';
+        stream = await openai.chat.completions.create(
+          {
+            model: targetModel,
+            messages: payloadMessages,
+            stream: true
+          },
+          { signal }
+        );
+      } else {
+        throw createErr;
+      }
+    }
 
     let accumulatedText = '';
     for await (const chunk of stream) {
